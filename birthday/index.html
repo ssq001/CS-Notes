@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070814">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>老婆，生日快乐</title>
+  <style>
+    :root {
+      --gold: #f3d48a;
+      --gold-dim: rgba(243, 212, 138, 0.62);
+      --ink: #070814;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--gold);
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "PingFang SC", serif;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #sky { z-index: 0; }
+    #fx { z-index: 2; }
+
+    .veil {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 46%, rgba(36, 32, 64, 0.28), transparent 52%),
+        radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.5), transparent 46%),
+        radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(0, 0, 0, 0.45) 100%);
+    }
+
+    .stage {
+      position: relative;
+      z-index: 4;
+      min-height: 100%;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding:
+        calc(28px + env(safe-area-inset-top))
+        calc(28px + env(safe-area-inset-right))
+        calc(56px + env(safe-area-inset-bottom))
+        calc(28px + env(safe-area-inset-left));
+    }
+
+    .foil {
+      color: var(--gold);
+      filter: drop-shadow(0 0 18px rgba(243, 212, 138, 0.28));
+    }
+
+    @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+      .foil {
+        background-image: linear-gradient(
+          185deg,
+          #fff8dc 0%,
+          #f8e7b0 24%,
+          #e2b657 48%,
+          #fff6d4 64%,
+          #b8863a 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    }
+
+    .kicker {
+      margin: 0 0 0.35em;
+      font-size: clamp(15px, 2.1vh, 22px);
+      letter-spacing: 0.72em;
+      text-indent: 0.72em;
+      font-weight: 400;
+      opacity: 0.86;
+    }
+
+    .name {
+      margin: 0;
+      font-size: clamp(88px, 16vh, 168px);
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: 0.12em;
+      text-indent: 0.12em;
+    }
+
+    .title {
+      margin: 0.18em 0 0;
+      font-size: clamp(40px, 7vh, 84px);
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: 0.38em;
+      text-indent: 0.38em;
+    }
+
+    .rule {
+      width: min(180px, 28vw);
+      height: 1px;
+      margin: clamp(18px, 3vh, 28px) auto clamp(14px, 2.4vh, 22px);
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    }
+
+    .wish {
+      margin: 0;
+      font-size: clamp(16px, 2.5vh, 24px);
+      letter-spacing: 0.22em;
+      color: rgba(255, 236, 196, 0.82);
+      font-weight: 400;
+    }
+
+    .date {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(22px + env(safe-area-inset-bottom));
+      margin: 0;
+      font-size: clamp(13px, 1.7vh, 16px);
+      letter-spacing: 0.32em;
+      text-indent: 0.32em;
+      color: rgba(243, 212, 138, 0.5);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fs {
+      position: fixed;
+      z-index: 5;
+      right: calc(16px + env(safe-area-inset-right));
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(243, 212, 138, 0.35);
+      background: rgba(7, 8, 20, 0.35);
+      color: var(--gold);
+      opacity: 0.55;
+      display: grid;
+      place-items: center;
+    }
+
+    .fs svg { width: 18px; height: 18px; display: block; }
+    .fs .shrink { display: none; }
+    .fs[aria-pressed="true"] .expand { display: none; }
+    .fs[aria-pressed="true"] .shrink { display: block; }
+
+    @media (orientation: portrait) {
+      .name { font-size: clamp(72px, 18vw, 128px); }
+      .title { font-size: clamp(32px, 8vw, 56px); letter-spacing: 0.28em; text-indent: 0.28em; }
+      .wish { letter-spacing: 0.12em; }
+      .rule { width: min(140px, 40vw); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .foil { filter: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="sky"></canvas>
+  <canvas id="fx"></canvas>
+  <div class="veil"></div>
+  <main class="stage">
+    <p class="kicker foil">致</p>
+    <h1 class="name foil">老婆</h1>
+    <p class="title foil">生日快乐</p>
+    <div class="rule"></div>
+    <p class="wish">愿这一夜，只为你亮着。</p>
+    <p class="date" id="today"></p>
+  </main>
+  <button class="fs" id="fs" type="button" aria-label="全屏" aria-pressed="false">
+    <svg class="expand" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    </svg>
+    <svg class="shrink" viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M7 2v5H2M11 2v5h5M16 11h-5v5M2 11h5v5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    </svg>
+  </button>
+  <script>
+    const sky = document.getElementById("sky");
+    const fx = document.getElementById("fx");
+    const skyCtx = sky.getContext("2d");
+    const fxCtx = fx.getContext("2d");
+    const today = document.getElementById("today");
+    const fsBtn = document.getElementById("fs");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const stars = [];
+    const rockets = [];
+    const bursts = [];
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let autoTimer = 0;
+    let welcomed = false;
+    let wakeLock = null;
+    let last = performance.now();
+
+    const palettes = [
+      ["#fff6d2", "#f3d48a", "#e7b656"],
+      ["#fff4ee", "#f0c2b4", "#e8a0a0"],
+      ["#fffdf6", "#ffe7a8", "#fff8e4"]
+    ];
+
+    function renderDate() {
+      const d = new Date();
+      today.textContent = d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      for (const canvas of [sky, fx]) {
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+      }
+      skyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildStars();
+      drawStars(0);
+    }
+
+    function buildStars() {
+      stars.length = 0;
+      const count = Math.round((width * height) / 14000);
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: Math.random() < 0.08 ? 1.6 + Math.random() * 0.8 : 0.4 + Math.random() * 1.1,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.4 + Math.random() * 1.1,
+          alpha: 0.25 + Math.random() * 0.75
+        });
+      }
+    }
+
+    function drawStars(now) {
+      skyCtx.clearRect(0, 0, width, height);
+      const g = skyCtx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0, "#10142a");
+      g.addColorStop(0.45, "#0a0c1c");
+      g.addColorStop(1, "#070814");
+      skyCtx.fillStyle = g;
+      skyCtx.fillRect(0, 0, width, height);
+
+      for (const star of stars) {
+        const twinkle = reduceMotion ? 1 : 0.55 + Math.sin(now * 0.001 * star.speed + star.phase) * 0.45;
+        skyCtx.globalAlpha = star.alpha * twinkle;
+        skyCtx.fillStyle = star.r > 1.5 ? "#fff4d2" : "#f7f3ea";
+        skyCtx.beginPath();
+        skyCtx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        skyCtx.fill();
+      }
+      skyCtx.globalAlpha = 1;
+    }
+
+    function pickPalette() {
+      return palettes[Math.floor(Math.random() * palettes.length)];
+    }
+
+    function randomBloomPoint() {
+      let x;
+      let y;
+      if (Math.random() < 0.34) {
+        x = width * (0.32 + Math.random() * 0.36);
+        y = height * (0.08 + Math.random() * 0.2);
+      } else if (Math.random() < 0.5) {
+        x = width * (0.06 + Math.random() * 0.24);
+        y = height * (0.14 + Math.random() * 0.36);
+      } else {
+        x = width * (0.7 + Math.random() * 0.24);
+        y = height * (0.14 + Math.random() * 0.36);
+      }
+      return { x, y };
+    }
+
+    function launchTo(point) {
+      if (bursts.length > 6) return;
+      const palette = pickPalette();
+      const fromX = point.x + (Math.random() - 0.5) * 70;
+      rockets.push({
+        x: fromX,
+        y: height + 8,
+        tx: point.x,
+        ty: point.y,
+        color: palette[1],
+        palette,
+        trail: []
+      });
+    }
+
+    function explode(x, y, palette) {
+      const count = 64 + Math.floor(Math.random() * 36);
+      const particles = [];
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.18;
+        const speed = 1.1 + Math.random() * 3.3;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          decay: 0.007 + Math.random() * 0.011,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          size: 1.1 + Math.random() * 1.7
+        });
+      }
+      bursts.push(particles);
+    }
+
+    function step(dt) {
+      for (let i = rockets.length - 1; i >= 0; i--) {
+        const rocket = rockets[i];
+        rocket.trail.push({ x: rocket.x, y: rocket.y });
+        if (rocket.trail.length > 10) rocket.trail.shift();
+        const dx = rocket.tx - rocket.x;
+        const dy = rocket.ty - rocket.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const stepLen = 9.5 * dt;
+        if (dist <= stepLen + 6) {
+          explode(rocket.tx, rocket.ty, rocket.palette);
+          rockets.splice(i, 1);
+          continue;
+        }
+        rocket.x += (dx / dist) * stepLen;
+        rocket.y += (dy / dist) * stepLen;
+      }
+
+      for (let i = bursts.length - 1; i >= 0; i--) {
+        const particles = bursts[i];
+        for (let j = particles.length - 1; j >= 0; j--) {
+          const p = particles[j];
+          p.vy += 0.018 * dt;
+          p.vx *= 0.99;
+          p.vy *= 0.99;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= p.decay * dt;
+          if (p.life <= 0) particles.splice(j, 1);
+        }
+        if (!particles.length) bursts.splice(i, 1);
+      }
+    }
+
+    function drawFx() {
+      fxCtx.clearRect(0, 0, width, height);
+      fxCtx.globalCompositeOperation = "lighter";
+      for (const rocket of rockets) {
+        for (let i = 0; i < rocket.trail.length; i++) {
+          const t = rocket.trail[i];
+          fxCtx.globalAlpha = (i / rocket.trail.length) * 0.7;
+          fxCtx.fillStyle = rocket.color;
+          fxCtx.beginPath();
+          fxCtx.arc(t.x, t.y, 1.2, 0, Math.PI * 2);
+          fxCtx.fill();
+        }
+        fxCtx.globalAlpha = 1;
+        fxCtx.fillStyle = "#fff8e4";
+        fxCtx.beginPath();
+        fxCtx.arc(rocket.x, rocket.y, 2.1, 0, Math.PI * 2);
+        fxCtx.fill();
+      }
+      for (const particles of bursts) {
+        for (const p of particles) {
+          fxCtx.globalAlpha = Math.max(p.life, 0);
+          fxCtx.fillStyle = p.color;
+          fxCtx.beginPath();
+          fxCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          fxCtx.fill();
+        }
+      }
+      fxCtx.globalAlpha = 1;
+      fxCtx.globalCompositeOperation = "source-over";
+    }
+
+    function frame(now) {
+      const dt = Math.min(2, (now - last) / 16.67);
+      last = now;
+      if (!reduceMotion) drawStars(now);
+      step(dt);
+      drawFx();
+      requestAnimationFrame(frame);
+    }
+
+    function startAuto() {
+      if (reduceMotion || autoTimer) return;
+      launchTo(randomBloomPoint());
+      autoTimer = window.setInterval(() => launchTo(randomBloomPoint()), 1200);
+    }
+
+    function stopAuto() {
+      if (!autoTimer) return;
+      clearInterval(autoTimer);
+      autoTimer = 0;
+    }
+
+    function fullscreenElement() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function enterFullscreen() {
+      if (fullscreenElement()) return;
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!req) return;
+      Promise.resolve(req.call(el)).catch(() => {});
+    }
+
+    function exitFullscreen() {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (!exit || !fullscreenElement()) return;
+      Promise.resolve(exit.call(document)).catch(() => {});
+    }
+
+    function toggleFullscreen() {
+      if (fullscreenElement()) exitFullscreen();
+      else enterFullscreen();
+    }
+
+    function syncFullscreenButton() {
+      const on = Boolean(fullscreenElement());
+      fsBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      fsBtn.setAttribute("aria-label", on ? "退出全屏" : "全屏");
+    }
+
+    async function keepAwake() {
+      if (!navigator.wakeLock) return;
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+      } catch (e) {
+        wakeLock = null;
+      }
+    }
+
+    function welcome() {
+      if (welcomed) return;
+      welcomed = true;
+      keepAwake();
+      enterFullscreen();
+    }
+
+    window.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("#fs")) return;
+      welcome();
+      launchTo({ x: event.clientX, y: event.clientY });
+    });
+
+    fsBtn.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      welcomed = true;
+      keepAwake();
+      toggleFullscreen();
+    });
+
+    document.addEventListener("fullscreenchange", syncFullscreenButton);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenButton);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        if (welcomed) keepAwake();
+        startAuto();
+      } else {
+        stopAuto();
+      }
+    });
+
+    window.addEventListener("resize", resize);
+    renderDate();
+    window.setInterval(renderDate, 60000);
+    resize();
+    startAuto();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
